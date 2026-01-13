@@ -19,12 +19,11 @@ SubHunt focuses on **quality over quantity**:
 
 ## ✨ Features
 
-- Passive subdomain enumeration (crt.sh)
-- Active DNS bruteforce
+- Active DNS subdomain enumeration (bruteforce)
 - DNS resolution & validation
 - Deduplication
-- Clean CLI output (stdout)
-- Designed for bug bounty & pentesting workflows
+- Deterministic output
+- Pipeline-friendly CLI output
 
 ---
 
