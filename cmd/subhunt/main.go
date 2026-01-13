@@ -13,6 +13,7 @@ import (
 func main() {
 	domain := flag.String("d", "", "Target domain")
 	passiveEnum := flag.Bool("passive", false, "Enable passive enumeration")
+	threads := flag.Int("threads", 50, "Number of concurrent DNS threads")
 	bruteforceList := flag.String("bruteforce", "", "Wordlist for DNS bruteforce")
 	resolve := flag.Bool("resolve", false, "Resolve subdomains")
 	flag.Parse()
@@ -31,15 +32,17 @@ func main() {
 
 
 	if *bruteforceList != "" {
-		results := bruteforce.Brute(*domain, *bruteforceList)
+		results := bruteforce.Brute(*domain, *bruteforceList, *threads)
 		subs = append(subs, results...)
 	}
 
 	subs = utils.Dedupe(subs)
 
-	if *resolve {
-		subs = resolver.Resolve(subs)
+	// Only resolve if bruteforce was NOT used
+	if *resolve && *bruteforceList == "" {
+	subs = resolver.Resolve(subs)
 	}
+
 
 	for _, s := range subs {
 		fmt.Println(s)
