@@ -7,14 +7,16 @@ import (
 	"sync"
 )
 
-func Brute(domain, wordlist string) []string {
+func Brute(domain, wordlist string, workers int) []string {
 	file, err := os.Open(wordlist)
 	if err != nil {
 		return nil
 	}
 	defer file.Close()
 
-	const workers = 50 // safe default
+	if workers < 1 {
+		workers = 10
+	}
 	jobs := make(chan string)
 	results := make(chan string)
 
