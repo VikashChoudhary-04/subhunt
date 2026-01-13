@@ -3,7 +3,7 @@ package bruteforce
 import (
 	"bufio"
 	"fmt"
-	"net"
+	"github.com/VikashChoudhary-04/subhunt/internal/dnsresolver"
 	"os"
 	"sync"
 	"sync/atomic"
@@ -50,10 +50,11 @@ func Brute(domain, wordlist string, workers int) []string {
 		go func() {
 			defer wg.Done()
 			for sub := range jobs {
-				if _, err := net.LookupHost(sub); err == nil {
-					// ✅ MATCH FOUND — send immediately
+				if dnsresolver.ResolveDoH(sub) {
+				// ✅ MATCH FOUND — send immediately
 					results <- sub
 				}
+
 				atomic.AddUint64(&tested, 1)
 			}
 		}()
