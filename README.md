@@ -60,7 +60,7 @@ go run cmd/subhunt/main.go -d example.com --passive
 ### DNS bruteforce + validation
 
 ```bash
-go run cmd/subhunt/main.go -d example.com --bruteforce wordlists/small.txt --resolve
+go run cmd/subhunt/main.go -d example.com --bruteforce your-wordlist --resolve
 ```
 
 ### 🔌 Pipeline Example
