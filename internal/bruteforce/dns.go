@@ -28,7 +28,7 @@ func Brute(domain, wordlist string, workers int) []string {
 	var wg sync.WaitGroup
 	done := make(chan struct{})
 
-	// 🔴 LIVE PROGRESS DISPLAY (IMMEDIATE)
+	// 🔵 LIVE PROGRESS DISPLAY (stderr)
 	ticker := time.NewTicker(500 * time.Millisecond)
 	go func() {
 		fmt.Fprintf(os.Stderr, "[+] Tested: 0")
@@ -44,19 +44,22 @@ func Brute(domain, wordlist string, workers int) []string {
 		}
 	}()
 
-	// Worker pool
+	// 🔵 Worker pool
 	for i := 0; i < workers; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			for sub := range jobs {
-				_, _ = net.LookupHost(sub)
+				if _, err := net.LookupHost(sub); err == nil {
+					// ✅ MATCH FOUND — send immediately
+					results <- sub
+				}
 				atomic.AddUint64(&tested, 1)
 			}
 		}()
 	}
 
-	// Feed jobs
+	// 🔵 Feed jobs
 	go func() {
 		scanner := bufio.NewScanner(file)
 		for scanner.Scan() {
@@ -65,15 +68,17 @@ func Brute(domain, wordlist string, workers int) []string {
 		close(jobs)
 	}()
 
-	// Close everything
+	// 🔵 Close channels
 	go func() {
 		wg.Wait()
 		close(results)
 		close(done)
 	}()
 
+	// 🔵 Print results immediately (stdout)
 	var found []string
 	for r := range results {
+		fmt.Println(r) // 👈 PRINTS AS SOON AS FOUND
 		found = append(found, r)
 	}
 
