@@ -2,9 +2,11 @@ package bruteforce
 
 import (
 	"bufio"
+	"fmt"
 	"net"
 	"os"
 	"sync"
+	"sync/atomic"
 )
 
 func Brute(domain, wordlist string, workers int) []string {
@@ -17,9 +19,11 @@ func Brute(domain, wordlist string, workers int) []string {
 	if workers < 1 {
 		workers = 10
 	}
+
 	jobs := make(chan string)
 	results := make(chan string)
 
+	var tested uint64
 	var wg sync.WaitGroup
 
 	// Worker pool
@@ -28,25 +32,40 @@ func Brute(domain, wordlist string, workers int) []string {
 		go func() {
 			defer wg.Done()
 			for sub := range jobs {
-				_, err := net.LookupHost(sub)
-				if err == nil {
+				net.LookupHost(sub)
+				atomic.AddUint64(&tested, 1)
+			}
+		}()
+	}
+
+	// Result collector (separate lookup to avoid duplicate DNS)
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for sub := range jobs {
+				if _, err := net.LookupHost(sub); err == nil {
 					results <- sub
 				}
 			}
 		}()
 	}
 
-	// Reader
+	// Feed jobs
 	go func() {
 		scanner := bufio.NewScanner(file)
 		for scanner.Scan() {
-			sub := scanner.Text() + "." + domain
-			jobs <- sub
+			jobs <- scanner.Text() + "." + domain
+
+			// Print progress every 1000 tests
+			if atomic.LoadUint64(&tested)%1000 == 0 && atomic.LoadUint64(&tested) != 0 {
+				fmt.Fprintf(os.Stderr, "[+] Tested: %d\n", atomic.LoadUint64(&tested))
+			}
 		}
 		close(jobs)
 	}()
 
-	// Closer
+	// Close results when done
 	go func() {
 		wg.Wait()
 		close(results)
@@ -57,5 +76,6 @@ func Brute(domain, wordlist string, workers int) []string {
 		found = append(found, r)
 	}
 
+	fmt.Fprintf(os.Stderr, "[+] Total tested: %d\n", tested)
 	return found
 }
