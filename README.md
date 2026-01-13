@@ -205,16 +205,3 @@ Subhunt is intentionally **simple, honest, and extensible**.
 
 It doesn’t try to do everything —
 it does **one thing well**, and gives you full control over how deep you go.
-
-```
-
----
-
-If you want next, I can help you:
-- prepare a **v1.0 release**
-- add badges (Go version, license, status)
-- add example screenshots
-- add a CONTRIBUTING.md
-
-Just tell me.
-```
