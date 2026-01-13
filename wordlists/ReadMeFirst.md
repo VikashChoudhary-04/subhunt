@@ -168,4 +168,14 @@ Why it matters:
 
 ```bash
 subhunt -d example.com \
-  --bruteforce /path/to/SecLists/Discovery/DNS/subdomains-top1million-5000.txt
+  --bruteforce /path/to/SecLists/Discovery/DNS/subdomains-top1million-5000.txt --threads 150
+```
+
+---
+
+## Recommended Workflow
+
+- Start with a small or top-5000 list
+- Analyze discovered subdomains
+- Generate permutations
+- Use larger lists only if necessary
