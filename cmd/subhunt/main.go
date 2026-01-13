@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/VikashChoudhary-04/subhunt/internal/bruteforce"
-	"github.com/VikashChoudhary-04/subhunt/internal/passive"
 	"github.com/VikashChoudhary-04/subhunt/internal/resolver"
 	"github.com/VikashChoudhary-04/subhunt/internal/utils"
 )
@@ -26,13 +25,9 @@ func main() {
 	var subs []string
 
 	if *passiveEnum {
-		results, err := passive.CRTSH(*domain)
-		if err != nil {
-			fmt.Println("[!] crt.sh failed:", err)
-		} else {
-			subs = append(subs, results...)
-		}
+	fmt.Println("[*] Passive enumeration enabled (no crt.sh)")
 	}
+
 
 
 	if *bruteforceList != "" {
