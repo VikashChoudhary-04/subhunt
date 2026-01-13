@@ -17,10 +17,9 @@ type crtEntry struct {
 func CRTSH(domain string) ([]string, error) {
 	url := fmt.Sprintf("https://crt.sh/?q=%%25.%s&output=json", domain)
 
-	// Force IPv4
 	dialer := &net.Dialer{
-		Timeout:   10 * time.Second,
-		KeepAlive: 10 * time.Second,
+		Timeout:   8 * time.Second,
+		KeepAlive: 8 * time.Second,
 	}
 
 	transport := &http.Transport{
@@ -30,31 +29,48 @@ func CRTSH(domain string) ([]string, error) {
 	}
 
 	client := &http.Client{
-		Timeout:   20 * time.Second,
+		Timeout:   15 * time.Second,
 		Transport: transport,
 	}
 
-	resp, err := client.Get(url)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
+	var lastErr error
 
-	var entries []crtEntry
-	if err := json.NewDecoder(resp.Body).Decode(&entries); err != nil {
-		return nil, err
-	}
+	for attempt := 1; attempt <= 3; attempt++ {
+		req, _ := http.NewRequest("GET", url, nil)
+		req.Header.Set("User-Agent", "subhunt/1.0")
 
-	results := []string{}
-	for _, e := range entries {
-		names := strings.Split(e.NameValue, "\n")
-		for _, n := range names {
-			n = strings.TrimSpace(n)
-			if strings.HasSuffix(n, domain) {
-				results = append(results, n)
+		resp, err := client.Do(req)
+		if err != nil {
+			lastErr = err
+			time.Sleep(time.Duration(attempt) * 2 * time.Second)
+			continue
+		}
+
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			lastErr = fmt.Errorf("crt.sh returned %d", resp.StatusCode)
+			time.Sleep(time.Duration(attempt) * 2 * time.Second)
+			continue
+		}
+
+		var entries []crtEntry
+		if err := json.NewDecoder(resp.Body).Decode(&entries); err != nil {
+			return nil, err
+		}
+
+		results := []string{}
+		for _, e := range entries {
+			for _, n := range strings.Split(e.NameValue, "\n") {
+				n = strings.TrimSpace(n)
+				if strings.HasSuffix(n, domain) {
+					results = append(results, n)
+				}
 			}
 		}
+
+		return results, nil
 	}
 
-	return results, nil
+	return nil, lastErr
 }
