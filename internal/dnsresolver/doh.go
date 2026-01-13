@@ -7,9 +7,7 @@ import (
 )
 
 type dohResponse struct {
-	Answer []struct {
-		Data string `json:"data"`
-	} `json:"Answer"`
+	Status int `json:"Status"`
 }
 
 func ResolveDoH(domain string) bool {
@@ -19,12 +17,16 @@ func ResolveDoH(domain string) bool {
 
 	req, err := http.NewRequest(
 		"GET",
-		"https://dns.google/resolve?name="+domain+"&type=A",
+		"https://cloudflare-dns.com/dns-query?name="+domain+"&type=A",
 		nil,
 	)
 	if err != nil {
 		return false
 	}
+
+	// REQUIRED by Cloudflare
+	req.Header.Set("Accept", "application/dns-json")
+	req.Header.Set("User-Agent", "subhunt")
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -37,5 +39,6 @@ func ResolveDoH(domain string) bool {
 		return false
 	}
 
-	return len(result.Answer) > 0
+	// Status == 0 means the domain exists
+	return result.Status == 0
 }
