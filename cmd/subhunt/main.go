@@ -28,11 +28,12 @@ func main() {
 	if *passiveEnum {
 		results, err := passive.CRTSH(*domain)
 		if err != nil {
-			fmt.Println("Passive enum error:", err)
-			os.Exit(1)
+			fmt.Println("[!] crt.sh failed:", err)
+		} else {
+			subs = append(subs, results...)
 		}
-		subs = append(subs, results...)
 	}
+
 
 	if *bruteforceList != "" {
 		results := bruteforce.Brute(*domain, *bruteforceList)
