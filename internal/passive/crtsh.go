@@ -46,26 +46,47 @@ func CRTSH(domain string) ([]string, error) {
 			continue
 		}
 
-		defer resp.Body.Close()
-
 		if resp.StatusCode != http.StatusOK {
 			lastErr = fmt.Errorf("crt.sh returned %d", resp.StatusCode)
+			resp.Body.Close()
 			time.Sleep(time.Duration(attempt) * 2 * time.Second)
 			continue
 		}
 
 		var entries []crtEntry
 		if err := json.NewDecoder(resp.Body).Decode(&entries); err != nil {
+			resp.Body.Close()
 			return nil, err
 		}
+		resp.Body.Close()
 
+		seen := make(map[string]struct{})
 		results := []string{}
+
 		for _, e := range entries {
 			for _, n := range strings.Split(e.NameValue, "\n") {
-				n = strings.TrimSpace(n)
-				if strings.HasSuffix(n, domain) {
-					results = append(results, n)
+				n = strings.ToLower(strings.TrimSpace(n))
+
+				// remove wildcard
+				n = strings.TrimPrefix(n, "*.")
+
+				// must end with .domain (real subdomain)
+				if !strings.HasSuffix(n, "."+domain) {
+					continue
 				}
+
+				// exclude root domain itself
+				if n == domain {
+					continue
+				}
+
+				// avoid duplicates
+				if _, ok := seen[n]; ok {
+					continue
+				}
+				seen[n] = struct{}{}
+
+				results = append(results, n)
 			}
 		}
 
