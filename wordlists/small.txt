@@ -3,3 +3,5 @@ mail
 api
 dev
 test
+staging
+admin
