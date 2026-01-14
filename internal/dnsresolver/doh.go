@@ -24,7 +24,6 @@ func ResolveDoH(domain string) bool {
 		return false
 	}
 
-	// REQUIRED by Cloudflare
 	req.Header.Set("Accept", "application/dns-json")
 	req.Header.Set("User-Agent", "subhunt")
 
@@ -39,6 +38,5 @@ func ResolveDoH(domain string) bool {
 		return false
 	}
 
-	// Status == 0 means the domain exists
 	return result.Status == 0
 }
