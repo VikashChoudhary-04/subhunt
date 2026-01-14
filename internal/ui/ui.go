@@ -8,6 +8,14 @@ import (
 
 var startTime time.Time
 
+func StartTimer() {
+	startTime = time.Now()
+}
+
+func Duration() string {
+	return time.Since(startTime).Truncate(time.Second).String()
+}
+
 func Banner() {
 	fmt.Println("┌─────────────────────────────────────────────┐")
 	fmt.Println("│ Subhunt v0.1.0                              │")
@@ -21,21 +29,9 @@ func Info(msg string) {
 }
 
 func Found(sub string) {
-	fmt.Fprintf(os.Stderr, "[+] %s\n", sub)
-}
-
-func Warn(msg string) {
-	fmt.Fprintf(os.Stderr, "[!] %s\n", msg)
+	fmt.Printf("[+] %s\n", sub)
 }
 
 func Done(msg string) {
 	fmt.Fprintf(os.Stderr, "[✓] %s\n", msg)
-}
-
-func StartTimer() {
-	startTime = time.Now()
-}
-
-func Duration() string {
-	return time.Since(startTime).Truncate(time.Second).String()
 }
