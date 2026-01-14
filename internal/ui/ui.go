@@ -10,9 +10,9 @@ var startTime time.Time
 
 func Banner() {
 	fmt.Println("┌─────────────────────────────────────────────┐")
-	fmt.Println("│ Subhunt v0.1.0                               │")
-	fmt.Println("│ Active Subdomain Enumeration (DoH)           │")
-	fmt.Println("│ Author: Vikash Choudhary                     │")
+	fmt.Println("│ Subhunt v0.1.0                              │")
+	fmt.Println("│ Active Subdomain Enumeration (DoH)          │")
+	fmt.Println("│ Author: Vikash Choudhary                    │")
 	fmt.Println("└─────────────────────────────────────────────┘")
 }
 
@@ -21,7 +21,7 @@ func Info(msg string) {
 }
 
 func Found(sub string) {
-	fmt.Printf("[+] %s\n", sub)
+	fmt.FPrintf("[+] %s\n", sub)
 }
 
 func Warn(msg string) {
