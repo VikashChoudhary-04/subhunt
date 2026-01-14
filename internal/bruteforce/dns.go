@@ -3,8 +3,8 @@ package bruteforce
 import (
 	"bufio"
 	"os"
-	"sync"
 	"strconv"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -35,56 +35,70 @@ func Brute(domain, wordlist string, workers int, quiet bool) ([]string, Stats) {
 	done := make(chan struct{})
 	start := time.Now()
 
-	// 🔵 LIVE STATUS LINE
+	// ------------------------------------------------
+	// LIVE STATUS LINE (stderr, single line, no spam)
+	// ------------------------------------------------
 	if !quiet {
 		ticker := time.NewTicker(500 * time.Millisecond)
+
 		go func() {
 			for {
 				select {
 				case <-ticker.C:
 					elapsed := time.Since(start).Seconds()
+
 					var rate uint64
 					if elapsed >= 1 {
 						rate = atomic.LoadUint64(&stats.Tested) / uint64(elapsed)
-					} else {
-						rate = 0
 					}
+
 					os.Stderr.WriteString(
 						"\r[RUNNING] Tested: " +
-							format(atomic.LoadUint64(&stats.Tested)) +
+							strconv.FormatUint(atomic.LoadUint64(&stats.Tested), 10) +
 							" | Found: " +
-							format(atomic.LoadUint64(&stats.Found)) +
+							strconv.FormatUint(atomic.LoadUint64(&stats.Found), 10) +
 							" | Rate: " +
-							format(rate) + "/s",
+							strconv.FormatUint(rate, 10) + "/s",
 					)
+
 				case <-done:
 					ticker.Stop()
+					os.Stderr.WriteString("\n")
 					return
 				}
 			}
 		}()
 	}
 
-	// 🔵 WORKERS
+	// ------------------------------------------------
+	// WORKER POOL
+	// ------------------------------------------------
 	for i := 0; i < workers; i++ {
 		wg.Add(1)
+
 		go func() {
 			defer wg.Done()
+
 			for sub := range jobs {
 				if dnsresolver.ResolveDoH(sub) {
 					atomic.AddUint64(&stats.Found, 1)
+
+					// Ensure result starts on a new line
 					if !quiet {
-					// Move to a clean line before printing result
 						os.Stderr.WriteString("\n")
 					}
+
 					results <- sub
 				}
+
 				atomic.AddUint64(&stats.Tested, 1)
 			}
 		}()
 	}
 
-	// 🔵 FEED JOBS
+	// ------------------------------------------------
+	// FEED JOBS
+	// ------------------------------------------------
 	go func() {
 		scanner := bufio.NewScanner(file)
 		for scanner.Scan() {
@@ -93,23 +107,22 @@ func Brute(domain, wordlist string, workers int, quiet bool) ([]string, Stats) {
 		close(jobs)
 	}()
 
-	// 🔵 CLOSE
+	// ------------------------------------------------
+	// SHUTDOWN
+	// ------------------------------------------------
 	go func() {
 		wg.Wait()
 		close(results)
 		close(done)
 	}()
 
-	// 🔵 COLLECT RESULTS
+	// ------------------------------------------------
+	// COLLECT RESULTS
+	// ------------------------------------------------
 	var found []string
 	for r := range results {
 		found = append(found, r)
 	}
 
 	return found, stats
-}
-
-// helper (keeps output readable)
-func format(n uint64) string {
-	return strconv.FormatUint(n, 10)
 }
