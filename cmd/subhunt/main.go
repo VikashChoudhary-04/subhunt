@@ -34,6 +34,9 @@ func main() {
 	if *bruteforceList != "" {
 		results := bruteforce.Brute(*domain, *bruteforceList, *threads)
 		subs = append(subs, results...)
+		quiet := flag.Bool("quiet", false, "Show only results")
+		verbose := flag.Bool("verbose", false, "Verbose output (debug/info)")
+
 	}
 
 	subs = utils.Dedupe(subs)
