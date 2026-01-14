@@ -6,48 +6,93 @@ import (
 	"os"
 
 	"github.com/VikashChoudhary-04/subhunt/internal/bruteforce"
-	"github.com/VikashChoudhary-04/subhunt/internal/resolver"
-	"github.com/VikashChoudhary-04/subhunt/internal/utils"
+	"github.com/VikashChoudhary-04/subhunt/internal/ui"
 )
 
 func main() {
-	domain := flag.String("d", "", "Target domain")
-	passiveEnum := flag.Bool("passive", false, "Enable passive enumeration")
-	threads := flag.Int("threads", 50, "Number of concurrent DNS threads")
-	bruteforceList := flag.String("bruteforce", "", "Wordlist for DNS bruteforce")
-	resolve := flag.Bool("resolve", false, "Resolve subdomains")
+	// -------------------------------
+	// CLI FLAGS
+	// -------------------------------
+	domain := flag.String("d", "", "Target domain (example.com)")
+	wordlist := flag.String("bruteforce", "", "Path to wordlist")
+	threads := flag.Int("threads", 10, "Number of concurrent workers")
+	quiet := flag.Bool("quiet", false, "Show only results")
+	verbose := flag.Bool("verbose", false, "Verbose output")
+
 	flag.Parse()
 
-	if *domain == "" {
-		fmt.Println("Usage: subhunt -d example.com [--passive] [--bruteforce wordlist] [--resolve]")
+	// -------------------------------
+	// VALIDATION
+	// -------------------------------
+	if *domain == "" || *wordlist == "" {
+		fmt.Fprintf(os.Stderr,
+			"Usage: subhunt -d example.com --bruteforce wordlist.txt [--threads 50]\n")
 		os.Exit(1)
 	}
 
-	var subs []string
+	// -------------------------------
+	// UI STARTUP
+	// -------------------------------
+	if !*quiet {
+		ui.Banner()
+		ui.StartTimer()
 
-	if *passiveEnum {
-	fmt.Println("[*] Passive enumeration enabled (no crt.sh)")
+		ui.Info(fmt.Sprintf("Target      : %s", *domain))
+		ui.Info(fmt.Sprintf("Wordlist    : %s", *wordlist))
+		ui.Info(fmt.Sprintf("Threads     : %d", *threads))
+		ui.Info("Resolver    : DNS over HTTPS (Cloudflare)")
+		ui.Info("Mode        : Active Bruteforce")
+		fmt.Fprintln(os.Stderr, "------------------------------------------------")
 	}
 
-
-
-	if *bruteforceList != "" {
-		results := bruteforce.Brute(*domain, *bruteforceList, *threads)
-		subs = append(subs, results...)
-		quiet := flag.Bool("quiet", false, "Show only results")
-		verbose := flag.Bool("verbose", false, "Verbose output (debug/info)")
-
+	if *verbose {
+		ui.Info("Verbose mode enabled")
 	}
 
-	subs = utils.Dedupe(subs)
+	// -------------------------------
+	// RUN BRUTEFORCE
+	// -------------------------------
+	results, stats := bruteforce.Brute(
+		*domain,
+		*wordlist,
+		*threads,
+		*quiet,
+	)
 
-	// Only resolve if bruteforce was NOT used
-	if *resolve && *bruteforceList == "" {
-	subs = resolver.Resolve(subs)
+	// -------------------------------
+	// OUTPUT RESULTS (STDOUT)
+	// -------------------------------
+	for _, sub := range results {
+		ui.Found(sub)
 	}
 
+	// -------------------------------
+	// FINAL SUMMARY
+	// -------------------------------
+	if !*quiet {
+		fmt.Fprintln(os.Stderr)
+		ui.Done("Scan Finished")
 
-	for _, s := range subs {
-		fmt.Println(s)
+		fmt.Fprintf(os.Stderr, `
+Target        : %s
+Total Tested  : %d
+Total Found   : %d
+Duration      : %s
+Resolver      : DoH (Cloudflare)
+------------------------------------------------
+`,
+			*domain,
+			stats.Tested,
+			stats.Found,
+			ui.Duration(),
+		)
 	}
+
+	// -------------------------------
+	// EXIT CODE
+	// -------------------------------
+	if stats.Found > 0 {
+		os.Exit(0)
+	}
+	os.Exit(1)
 }
