@@ -73,6 +73,10 @@ func Brute(domain, wordlist string, workers int, quiet bool) ([]string, Stats) {
 			for sub := range jobs {
 				if dnsresolver.ResolveDoH(sub) {
 					atomic.AddUint64(&stats.Found, 1)
+					if !quiet {
+					// Move to a clean line before printing result
+						os.Stderr.WriteString("\n")
+					}
 					results <- sub
 				}
 				atomic.AddUint64(&stats.Tested, 1)
