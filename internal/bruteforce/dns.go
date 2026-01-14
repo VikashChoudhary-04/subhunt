@@ -29,20 +29,14 @@ func Brute(domain, wordlist string, workers int) []string {
 	done := make(chan struct{})
 
 	// 🔵 LIVE PROGRESS DISPLAY (stderr)
-	ticker := time.NewTicker(500 * time.Millisecond)
-	go func() {
-		fmt.Fprintf(os.Stderr, "[+] Tested: 0")
-		for {
-			select {
-			case <-ticker.C:
-				fmt.Fprintf(os.Stderr, "\r[+] Tested: %d", atomic.LoadUint64(&tested))
-			case <-done:
-				ticker.Stop()
-				fmt.Fprintf(os.Stderr, "\r[✓] Finished. Total tested: %d\n", atomic.LoadUint64(&tested))
-				return
-			}
-		}
-	}()
+	rate := atomic.LoadUint64(&tested) / uint64(time.Since(start).Seconds())
+	fmt.Fprintf(os.Stderr,
+		"\r[RUNNING] Tested: %d | Found: %d | Rate: %d/s",
+		atomic.LoadUint64(&tested),
+		atomic.LoadUint64(&found),
+		rate,
+	)
+
 
 	// 🔵 Worker pool
 	for i := 0; i < workers; i++ {
@@ -84,4 +78,23 @@ func Brute(domain, wordlist string, workers int) []string {
 	}
 
 	return found
+	var found uint64
+	atomic.AddUint64(&found, 1)
+	results <- sub
+	
 }
+ui.Done("Scan Finished")
+
+fmt.Fprintf(os.Stderr, `
+Target        : %s
+Total Tested  : %d
+Total Found   : %d
+Duration      : %s
+Resolver      : DoH (Cloudflare)
+------------------------------------------------
+`,
+domain,
+tested,
+found,
+ui.Duration(),
+)
