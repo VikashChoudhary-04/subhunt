@@ -36,7 +36,7 @@ func Brute(domain, wordlist string, workers int, quiet bool) ([]string, Stats) {
 	start := time.Now()
 
 	// ------------------------------------------------
-	// LIVE STATUS LINE (stderr, single line, no spam)
+	// STATUS LINE (ONLY goroutine that touches stderr)
 	// ------------------------------------------------
 	if !quiet {
 		ticker := time.NewTicker(500 * time.Millisecond)
@@ -53,7 +53,7 @@ func Brute(domain, wordlist string, workers int, quiet bool) ([]string, Stats) {
 					}
 
 					os.Stderr.WriteString(
-						"\r[RUNNING] Tested: " +
+						"\r\033[K[RUNNING] Tested: " +
 							strconv.FormatUint(atomic.LoadUint64(&stats.Tested), 10) +
 							" | Found: " +
 							strconv.FormatUint(atomic.LoadUint64(&stats.Found), 10) +
@@ -71,7 +71,7 @@ func Brute(domain, wordlist string, workers int, quiet bool) ([]string, Stats) {
 	}
 
 	// ------------------------------------------------
-	// WORKER POOL
+	// WORKER POOL (NO UI OUTPUT HERE)
 	// ------------------------------------------------
 	for i := 0; i < workers; i++ {
 		wg.Add(1)
@@ -82,15 +82,8 @@ func Brute(domain, wordlist string, workers int, quiet bool) ([]string, Stats) {
 			for sub := range jobs {
 				if dnsresolver.ResolveDoH(sub) {
 					atomic.AddUint64(&stats.Found, 1)
-
-					// Ensure result starts on a new line
-					if !quiet {
-						os.Stderr.WriteString("\n")
-					}
-
 					results <- sub
 				}
-
 				atomic.AddUint64(&stats.Tested, 1)
 			}
 		}()
@@ -117,7 +110,7 @@ func Brute(domain, wordlist string, workers int, quiet bool) ([]string, Stats) {
 	}()
 
 	// ------------------------------------------------
-	// COLLECT RESULTS
+	// COLLECT RESULTS (stdout handled in main.go)
 	// ------------------------------------------------
 	var found []string
 	for r := range results {
