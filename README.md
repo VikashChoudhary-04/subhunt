@@ -124,7 +124,7 @@ Subhunt uses **automation-friendly exit codes**:
 ### Example
 
 ```bash
-subhunt ... && echo "Subdomains found!"
+subhunt ... && echo "Subdomains found"
 ```
 
 ---
