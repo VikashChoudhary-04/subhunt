@@ -144,6 +144,9 @@ internal/
      └── ui.go          # CLI UI helpers
 wordlists/
  └── README.md          # Wordlist guidance (no lists bundled)
+.gitignore
+README.md
+go.mod
 ```
 
 ---
@@ -160,7 +163,7 @@ You are expected to use **community-maintained wordlists**, such as:
 - OWASP Amass  
 - Bug bounty curated lists  
 
-See `wordlists/README.md` for:
+See [README](wordlists/README.md) for:
 - Recommended wordlists (as of 2026)
 - Usage guidance
 - Warnings about numeric-only lists
