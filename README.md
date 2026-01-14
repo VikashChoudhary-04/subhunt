@@ -1,34 +1,37 @@
 # Subhunt
 
-**Subhunt** is a fast, modular **subdomain enumeration tool** focused on **active DNS bruteforce**, designed to work reliably even in **restricted network environments**.
+**Subhunt** is a fast, minimal, and reliable **active subdomain enumeration tool** built using **DNS over HTTPS (DoH)**.
 
-It follows modern reconnaissance practices and avoids unreliable, noisy, or misleading techniques.
+It is designed for **real-world reconnaissance** where traditional DNS (UDP/53), passive data sources, or large recon frameworks are unreliable, blocked, or noisy.
+
+Subhunt focuses on **correctness, clarity, and clean CLI behavior**.
 
 ---
 
 ## ✨ Features
 
-- 🚀 Active subdomain bruteforce
-- 🌐 DNS over HTTPS (DoH) support (works when UDP/53 is blocked)
-- ⚡ Concurrent scanning with configurable threads
-- 📊 Live progress display (tested count shown in real time)
-- 🔎 Immediate output as soon as a subdomain is found
-- 🧩 Wordlist-agnostic (SecLists, Assetnote, custom lists)
-- 🧼 No false positives — DNS-confirmed results only
-- 📦 Clean repository (no massive wordlists bundled)
+- 🚀 Active subdomain bruteforce enumeration  
+- 🌐 DNS over HTTPS (Cloudflare DoH)  
+- ⚡ Concurrent scanning with configurable threads  
+- 📊 Single live status line (no spam, no flicker)  
+- 🔎 Results printed immediately when found  
+- 🧩 Wordlist-agnostic (SecLists, Assetnote, custom lists)  
+- 🧼 Zero false positives (live DNS verification)  
+- 🤫 `--quiet` mode for automation and pipelines  
+- 🧪 Meaningful exit codes for scripting  
 
 ---
 
 ## 🧠 Design Philosophy
 
-Subhunt is built on a few core principles:
+Subhunt is intentionally **simple and opinionated**.
 
-- **Wordlists are data, not part of the tool**
-- **Accuracy > noise**
-- **Network restrictions are real**
-- **Do one thing well**
+- **Active enumeration only**
+- **No passive data sources** (no crt.sh, APIs, or third-party datasets)
+- **Wordlists are external data**, not part of the tool
+- **Accuracy over noise**
 
-Instead of embedding huge datasets or depending on flaky passive sources, Subhunt focuses on **deterministic, verifiable results**.
+If Subhunt prints a subdomain, **it exists at scan time**.
 
 ---
 
@@ -41,15 +44,14 @@ Instead of embedding huge datasets or depending on flaky passive sources, Subhun
 
 ### Clone the Repository
 
-> ⚠️ If your network blocks GitHub DNS, use:
-> - Mobile hotspot  
-> - Home Wi-Fi  
-> - Or GitHub Web UI (Download ZIP)
-
 ```bash
 git clone https://github.com/VikashChoudhary-04/subhunt.git
 cd subhunt
-````
+```
+
+> ⚠️ If `git clone` is slow or fails on restricted networks, use:
+> - a different network (mobile hotspot / home Wi-Fi)
+> - or GitHub Web UI → **Download ZIP**
 
 ---
 
@@ -58,129 +60,150 @@ cd subhunt
 ### Basic Usage
 
 ```bash
-go run cmd/subhunt/main.go \
+go run ./cmd/subhunt \
   -d example.com \
   --bruteforce /path/to/wordlist.txt
 ```
 
-### With Thread Control
+### Increase Concurrency
 
 ```bash
-go run cmd/subhunt/main.go \
+go run ./cmd/subhunt \
   -d example.com \
   --bruteforce /path/to/wordlist.txt \
-  --threads 50
+  --threads 100
+```
+
+### Quiet Mode (Results Only)
+
+```bash
+go run ./cmd/subhunt \
+  -d example.com \
+  --bruteforce /path/to/wordlist.txt \
+  --quiet
 ```
 
 ---
 
 ## 📊 Output Behavior
 
-While running, Subhunt displays live progress:
+### Live Status Line (stderr)
 
-```
-[+] Tested: 1247
-```
-
-As soon as a valid subdomain is found, it is printed immediately:
-
-```
-www.example.com
-api.example.com
+```text
+[RUNNING] Tested: 4214 | Found: 19 | Rate: 247/s
 ```
 
-After completion:
+- Single line
+- Updated in place
+- Never duplicated
+- Never mixed with results
 
+### Results (stdout)
+
+```text
+[+] www.example.com
+[+] api.example.com
 ```
-[✓] Finished. Total tested: 5000
+
+- Printed immediately when found
+- Always start on a new line
+- Safe for piping into other tools
+
+---
+
+## 🔄 Exit Codes
+
+Subhunt uses **automation-friendly exit codes**:
+
+| Condition | Exit Code |
+|--------|-----------|
+| At least one subdomain found | `0` |
+| No subdomains found | `1` |
+| Invalid usage | `1` |
+
+### Example
+
+```bash
+subhunt ... && echo "Subdomains found!"
+```
+
+---
+
+## 📁 Project Structure
+
+```text
+cmd/
+ └── subhunt/
+     └── main.go        # CLI entry point
+internal/
+ ├── bruteforce/
+ │   └── dns.go         # Concurrent bruteforce engine
+ ├── dnsresolver/
+ │   └── doh.go         # DNS over HTTPS resolver
+ └── ui/
+     └── ui.go          # CLI UI helpers
+wordlists/
+ └── README.md          # Wordlist guidance (no lists bundled)
 ```
 
 ---
 
 ## 📁 Wordlists
 
-Subhunt **does not bundle large wordlists by design**.
+Subhunt **does not bundle wordlists**.
 
-Users are expected to supply **community-maintained wordlists**.
+You are expected to use **community-maintained wordlists**, such as:
 
-Recommended sources include:
+- SecLists  
+- Assetnote  
+- ProjectDiscovery  
+- OWASP Amass  
+- Bug bounty curated lists  
 
-* **SecLists**
-* **Assetnote**
-* **ProjectDiscovery**
-* **OWASP Amass**
-* **Bug bounty curated lists**
-
-📌 See [`wordlists/README.md`](wordlists/README.md) for:
-
-* Top 10 wordlists (as of 2026)
-* Recommended files
-* Usage guidance
-* Warnings about numeric-only lists
+See `wordlists/README.md` for:
+- Recommended wordlists (as of 2026)
+- Usage guidance
+- Warnings about numeric-only lists
 
 ### Example (SecLists)
 
 ```bash
-go run cmd/subhunt/main.go \
+go run ./cmd/subhunt \
   -d example.com \
-  --bruteforce /path/to/SecLists/Discovery/DNS/subdomains-top1million-5000.txt
+  --bruteforce /usr/share/wordlists/seclists/Discovery/DNS/subdomains-top1million-5000.txt
 ```
 
 ---
 
 ## ⚠️ Common Mistakes
 
-* ❌ Using numeric-only lists directly (`1`, `01`, `0001`)
-* ❌ Expecting every domain to expose many subdomains
-* ❌ Assuming “no output” means the tool failed
+- ❌ Expecting every domain to expose many subdomains  
+- ❌ Using numeric-only lists directly  
+- ❌ Assuming “no output” means the tool failed  
 
-> Numeric wordlists are intended for **permutations**, not raw bruteforce.
+> Numeric lists are typically used for **permutations**, not raw bruteforce.
 
 ---
 
-## 🧪 Sanity Check
-
-To verify correct behavior:
+## 🧪 Quick Sanity Test
 
 ```bash
 echo www > test.txt
-go run cmd/subhunt/main.go -d yahoo.com --bruteforce test.txt
+go run ./cmd/subhunt -d yahoo.com --bruteforce test.txt
 ```
 
 Expected output:
 
-```
-www.yahoo.com
-[✓] Finished. Total tested: 1
-```
-
----
-
-## 🧱 Project Structure
-
-```
-cmd/
- └── subhunt/        # CLI entry point
-internal/
- ├── bruteforce/    # Concurrent bruteforce engine
- ├── dnsresolver/   # DNS over HTTPS resolver
- └── utils/         # Helper utilities
-wordlists/
- └── README.md      # Wordlist guidance (no large files)
+```text
+[+] www.yahoo.com
 ```
 
----
+Check exit code:
 
-## 🛣️ Roadmap
-
-Planned improvements:
-
-* 🔁 Permutation engine (api → api1, api-dev, api-v2)
-* 🔄 Recursive enumeration
-* 🧠 DNS result caching
-* 🚫 Wildcard DNS detection
-* 🌍 Multiple DoH providers with fallback
-* 🧪 Debug / verbose DNS modes
+```bash
+echo $?
+# 0
+```
 
 ---
 
@@ -188,20 +211,20 @@ Planned improvements:
 
 **Vikash Choudhary**
 
-Built with a **professional offensive-security mindset**, focusing on correctness, clarity, and real-world usability.
+Built with a **professional offensive-security mindset**, focusing on correctness, clean UX, and real-world constraints.
 
 ---
 
 ## 📜 Disclaimer
 
-This tool is intended for **educational purposes and authorized security testing only**.
+This tool is intended for **educational purposes and authorized security testing only**.  
 You are responsible for complying with all applicable laws and program rules.
 
 ---
 
 ## ⭐ Final Note
 
-Subhunt is intentionally **simple, honest, and extensible**.
+Subhunt is intentionally **minimal, honest, and predictable**.
 
-It doesn’t try to do everything —
-it does **one thing well**, and gives you full control over how deep you go.
+It does not try to replace large recon frameworks.  
+It provides **clean, verifiable results** you can trust and build upon.
