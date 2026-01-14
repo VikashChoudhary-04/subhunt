@@ -2,18 +2,23 @@ package bruteforce
 
 import (
 	"bufio"
-	"fmt"
-	"github.com/VikashChoudhary-04/subhunt/internal/dnsresolver"
 	"os"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/VikashChoudhary-04/subhunt/internal/dnsresolver"
 )
 
-func Brute(domain, wordlist string, workers int) []string {
+type Stats struct {
+	Tested uint64
+	Found  uint64
+}
+
+func Brute(domain, wordlist string, workers int, quiet bool) ([]string, Stats) {
 	file, err := os.Open(wordlist)
 	if err != nil {
-		return nil
+		return nil, Stats{}
 	}
 	defer file.Close()
 
@@ -24,37 +29,55 @@ func Brute(domain, wordlist string, workers int) []string {
 	jobs := make(chan string)
 	results := make(chan string)
 
-	var tested uint64
+	var stats Stats
 	var wg sync.WaitGroup
 	done := make(chan struct{})
+	start := time.Now()
 
-	// 🔵 LIVE PROGRESS DISPLAY (stderr)
-	rate := atomic.LoadUint64(&tested) / uint64(time.Since(start).Seconds())
-	fmt.Fprintf(os.Stderr,
-		"\r[RUNNING] Tested: %d | Found: %d | Rate: %d/s",
-		atomic.LoadUint64(&tested),
-		atomic.LoadUint64(&found),
-		rate,
-	)
+	// 🔵 LIVE STATUS LINE
+	if !quiet {
+		ticker := time.NewTicker(500 * time.Millisecond)
+		go func() {
+			for {
+				select {
+				case <-ticker.C:
+					elapsed := time.Since(start).Seconds()
+					rate := uint64(0)
+					if elapsed > 0 {
+						rate = atomic.LoadUint64(&stats.Tested) / uint64(elapsed)
+					}
+					os.Stderr.WriteString(
+						"\r[RUNNING] Tested: " +
+							format(atomic.LoadUint64(&stats.Tested)) +
+							" | Found: " +
+							format(atomic.LoadUint64(&stats.Found)) +
+							" | Rate: " +
+							format(rate) + "/s",
+					)
+				case <-done:
+					ticker.Stop()
+					return
+				}
+			}
+		}()
+	}
 
-
-	// 🔵 Worker pool
+	// 🔵 WORKERS
 	for i := 0; i < workers; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			for sub := range jobs {
 				if dnsresolver.ResolveDoH(sub) {
-				// ✅ MATCH FOUND — send immediately
+					atomic.AddUint64(&stats.Found, 1)
 					results <- sub
 				}
-
-				atomic.AddUint64(&tested, 1)
+				atomic.AddUint64(&stats.Tested, 1)
 			}
 		}()
 	}
 
-	// 🔵 Feed jobs
+	// 🔵 FEED JOBS
 	go func() {
 		scanner := bufio.NewScanner(file)
 		for scanner.Scan() {
@@ -63,40 +86,23 @@ func Brute(domain, wordlist string, workers int) []string {
 		close(jobs)
 	}()
 
-	// 🔵 Close channels
+	// 🔵 CLOSE
 	go func() {
 		wg.Wait()
 		close(results)
 		close(done)
 	}()
 
-	// 🔵 Print results immediately (stdout)
+	// 🔵 COLLECT RESULTS
 	var found []string
 	for r := range results {
-		fmt.Println(r) // 👈 PRINTS AS SOON AS FOUND
 		found = append(found, r)
 	}
 
-	return found
-	var found uint64
-	atomic.AddUint64(&found, 1)
-	results <- sub
+	return found, stats
+}
 
-	ui.Done("Scan Finished")
-
-	fmt.Fprintf(os.Stderr, `
-	Target        : %s
-	Total Tested  : %d
-	Total Found   : %d
-	Duration      : %s
-	Resolver      : DoH (Cloudflare)
-	------------------------------------------------
-	`,
-	domain,
-	tested,
-	found,
-	ui.Duration(),
-	)
-
-	
+// helper (keeps output readable)
+func format(n uint64) string {
+	return strconv.FormatUint(n, 10)
 }
