@@ -43,9 +43,11 @@ func Brute(domain, wordlist string, workers int, quiet bool) ([]string, Stats) {
 				select {
 				case <-ticker.C:
 					elapsed := time.Since(start).Seconds()
-					rate := uint64(0)
-					if elapsed > 0 {
+					var rate uint64
+					if elapsed >= 1 {
 						rate = atomic.LoadUint64(&stats.Tested) / uint64(elapsed)
+					} else {
+						rate = 0
 					}
 					os.Stderr.WriteString(
 						"\r[RUNNING] Tested: " +
