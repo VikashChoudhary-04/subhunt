@@ -21,7 +21,7 @@ func Info(msg string) {
 }
 
 func Found(sub string) {
-	fmt.Fprintf("[+] %s\n", sub)
+	fmt.Fprintf(os.Stderr, "[+] %s\n", sub)
 }
 
 func Warn(msg string) {
