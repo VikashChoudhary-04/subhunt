@@ -10,29 +10,19 @@ import (
 )
 
 func main() {
-	// -------------------------------
-	// CLI FLAGS
-	// -------------------------------
 	domain := flag.String("d", "", "Target domain (example.com)")
 	wordlist := flag.String("bruteforce", "", "Path to wordlist")
 	threads := flag.Int("threads", 10, "Number of concurrent workers")
 	quiet := flag.Bool("quiet", false, "Show only results")
-	verbose := flag.Bool("verbose", false, "Verbose output")
 
 	flag.Parse()
 
-	// -------------------------------
-	// VALIDATION
-	// -------------------------------
 	if *domain == "" || *wordlist == "" {
 		fmt.Fprintf(os.Stderr,
 			"Usage: subhunt -d example.com --bruteforce wordlist.txt [--threads 50]\n")
 		os.Exit(1)
 	}
 
-	// -------------------------------
-	// UI STARTUP
-	// -------------------------------
 	if !*quiet {
 		ui.Banner()
 		ui.StartTimer()
@@ -45,13 +35,6 @@ func main() {
 		fmt.Fprintln(os.Stderr, "------------------------------------------------")
 	}
 
-	if *verbose {
-		ui.Info("Verbose mode enabled")
-	}
-
-	// -------------------------------
-	// RUN BRUTEFORCE
-	// -------------------------------
 	results, stats := bruteforce.Brute(
 		*domain,
 		*wordlist,
@@ -59,16 +42,10 @@ func main() {
 		*quiet,
 	)
 
-	// -------------------------------
-	// OUTPUT RESULTS (STDOUT)
-	// -------------------------------
 	for _, sub := range results {
 		ui.Found(sub)
 	}
 
-	// -------------------------------
-	// FINAL SUMMARY
-	// -------------------------------
 	if !*quiet {
 		fmt.Fprintln(os.Stderr)
 		ui.Done("Scan Finished")
@@ -88,9 +65,6 @@ Resolver      : DoH (Cloudflare)
 		)
 	}
 
-	// -------------------------------
-	// EXIT CODE
-	// -------------------------------
 	if stats.Found > 0 {
 		os.Exit(0)
 	}
