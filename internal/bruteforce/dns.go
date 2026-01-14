@@ -81,20 +81,22 @@ func Brute(domain, wordlist string, workers int) []string {
 	var found uint64
 	atomic.AddUint64(&found, 1)
 	results <- sub
+
+	ui.Done("Scan Finished")
+
+	fmt.Fprintf(os.Stderr, `
+	Target        : %s
+	Total Tested  : %d
+	Total Found   : %d
+	Duration      : %s
+	Resolver      : DoH (Cloudflare)
+	------------------------------------------------
+	`,
+	domain,
+	tested,
+	found,
+	ui.Duration(),
+	)
+
 	
 }
-ui.Done("Scan Finished")
-
-fmt.Fprintf(os.Stderr, `
-Target        : %s
-Total Tested  : %d
-Total Found   : %d
-Duration      : %s
-Resolver      : DoH (Cloudflare)
-------------------------------------------------
-`,
-domain,
-tested,
-found,
-ui.Duration(),
-)
