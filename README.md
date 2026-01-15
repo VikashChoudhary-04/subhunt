@@ -11,14 +11,21 @@ Subhunt focuses on **correctness, clarity, and clean CLI behavior**.
 ## ✨ Features
 
 - 🚀 Active subdomain bruteforce enumeration  
-- 🌐 DNS over HTTPS (Cloudflare DoH)  
+- 🌐 DNS over HTTPS (DoH) with multiple resolver failover
+  - Cloudflare
+  - Google
+  - Quad9
 - ⚡ Concurrent scanning with configurable threads  
 - 📊 Single live status line (no spam, no flicker)  
 - 🔎 Results printed immediately when found  
 - 🧩 Wordlist-agnostic (SecLists, Assetnote, custom lists)  
 - 🧼 Zero false positives (live DNS verification)  
 - 🤫 `--quiet` mode for automation and pipelines  
-- 🧪 Meaningful exit codes for scripting  
+- 🧪 Meaningful exit codes for scripting
+- 🧠 DNS result caching (faster scans, fewer network requests)
+- 🎯 Wildcard DNS detection with explicit warning
+- 📄 `--json` mode for machine-readable output
+- 📊 Smoothed rate calculation (sliding window)
 
 ---
 
@@ -30,8 +37,10 @@ Subhunt is intentionally **simple and opinionated**.
 - **No passive data sources** (no crt.sh, APIs, or third-party datasets)
 - **Wordlists are external data**, not part of the tool
 - **Accuracy over noise**
+- **Verification-first**: every result is DNS-confirmed at scan time
 
-If Subhunt prints a subdomain, **it exists at scan time**.
+Subhunt favors deterministic, verifiable results over maximum coverage.
+If a subdomain is printed, it was resolvable during the scan.
 
 ---
 
@@ -83,6 +92,25 @@ go run ./cmd/subhunt \
   --quiet
 ```
 
+### JSON Output Mode (Automation)
+
+```bash
+go run ./cmd/subhunt \
+  -d example.com \
+  --bruteforce /path/to/wordlist.txt \
+  --json
+```
+
+Example JSON output:
+
+{
+  "domain": "example.com",
+  "found": ["www.example.com", "api.example.com"],
+  "tested": 5000,
+  "found_count": 2,
+  "duration": "2.3s"
+}
+
 ---
 
 ## 📊 Output Behavior
@@ -97,6 +125,7 @@ go run ./cmd/subhunt \
 - Updated in place
 - Never duplicated
 - Never mixed with results
+- Smoothed rate (sliding window, not total average)
 
 ### Results (stdout)
 
@@ -175,6 +204,15 @@ go run ./cmd/subhunt \
   -d example.com \
   --bruteforce /usr/share/wordlists/seclists/Discovery/DNS/subdomains-top1million-5000.txt
 ```
+
+---
+
+## Notes on Accuracy
+
+- Wildcard DNS is detected and explicitly reported
+- Results are not suppressed to avoid false negatives
+- Large wordlists are handled safely (scanner buffer adjusted)
+- DNS results are cached in memory for performance
 
 ---
 
