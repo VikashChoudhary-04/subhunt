@@ -2,6 +2,8 @@ package bruteforce
 
 import (
 	"bufio"
+	"fmt"
+	"math/rand"
 	"os"
 	"strconv"
 	"sync"
@@ -11,12 +13,21 @@ import (
 	"github.com/VikashChoudhary-04/subhunt/internal/dnsresolver"
 )
 
+var dnsCache = struct {
+	sync.RWMutex
+	data map[string]bool
+}{
+	data: make(map[string]bool),
+}
+
 type Stats struct {
 	Tested uint64
 	Found  uint64
 }
 
 func Brute(domain, wordlist string, workers int, quiet bool) ([]string, Stats) {
+	wildcard := hasWildcard(domain)
+
 	file, err := os.Open(wordlist)
 	if err != nil {
 		return nil, Stats{}
@@ -33,28 +44,37 @@ func Brute(domain, wordlist string, workers int, quiet bool) ([]string, Stats) {
 	var stats Stats
 	var wg sync.WaitGroup
 	done := make(chan struct{})
-	start := time.Now()
 
 	// ------------------------------------------------
-	// STATUS LINE (ONLY goroutine that touches stderr)
+	// STATUS LINE (stderr only)
 	// ------------------------------------------------
 	if !quiet {
 		ticker := time.NewTicker(500 * time.Millisecond)
+
+		var lastTested uint64
+		lastTime := time.Now()
 
 		go func() {
 			for {
 				select {
 				case <-ticker.C:
-					elapsed := time.Since(start).Seconds()
+					now := time.Now()
+					elapsed := now.Sub(lastTime).Seconds()
 
+					current := atomic.LoadUint64(&stats.Tested)
 					var rate uint64
-					if elapsed >= 1 {
-						rate = atomic.LoadUint64(&stats.Tested) / uint64(elapsed)
+
+					// Prevent spike on first tick
+					if elapsed > 0 && lastTested > 0 {
+						rate = uint64(float64(current-lastTested) / elapsed)
 					}
+
+					lastTested = current
+					lastTime = now
 
 					os.Stderr.WriteString(
 						"\r\033[K[RUNNING] Tested: " +
-							strconv.FormatUint(atomic.LoadUint64(&stats.Tested), 10) +
+							strconv.FormatUint(current, 10) +
 							" | Found: " +
 							strconv.FormatUint(atomic.LoadUint64(&stats.Found), 10) +
 							" | Rate: " +
@@ -71,7 +91,7 @@ func Brute(domain, wordlist string, workers int, quiet bool) ([]string, Stats) {
 	}
 
 	// ------------------------------------------------
-	// WORKER POOL (NO UI OUTPUT HERE)
+	// WORKERS
 	// ------------------------------------------------
 	for i := 0; i < workers; i++ {
 		wg.Add(1)
@@ -80,24 +100,52 @@ func Brute(domain, wordlist string, workers int, quiet bool) ([]string, Stats) {
 			defer wg.Done()
 
 			for sub := range jobs {
-				if dnsresolver.ResolveDoH(sub) {
-					atomic.AddUint64(&stats.Found, 1)
-					results <- sub
+				dnsCache.RLock()
+				cached, ok := dnsCache.data[sub]
+				dnsCache.RUnlock()
+
+				if ok {
+					if cached {
+						results <- sub
+						atomic.AddUint64(&stats.Found, 1)
+					}
+					atomic.AddUint64(&stats.Tested, 1)
+					continue
 				}
+
+				resolved := dnsresolver.ResolveDoH(sub)
+
+				dnsCache.Lock()
+				dnsCache.data[sub] = resolved
+				dnsCache.Unlock()
+
+				if resolved {
+					results <- sub
+					atomic.AddUint64(&stats.Found, 1)
+				}
+
 				atomic.AddUint64(&stats.Tested, 1)
 			}
 		}()
 	}
 
 	// ------------------------------------------------
-	// FEED JOBS
+	// FEED JOBS (scanner fix applied)
 	// ------------------------------------------------
 	go func() {
 		scanner := bufio.NewScanner(file)
+
+		buf := make([]byte, 0, 1024*1024)
+		scanner.Buffer(buf, 1024*1024)
+
 		for scanner.Scan() {
 			jobs <- scanner.Text() + "." + domain
 		}
 		close(jobs)
+
+		if err := scanner.Err(); err != nil {
+			fmt.Fprintf(os.Stderr, "[!] Wordlist read error: %v\n", err)
+		}
 	}()
 
 	// ------------------------------------------------
@@ -110,12 +158,26 @@ func Brute(domain, wordlist string, workers int, quiet bool) ([]string, Stats) {
 	}()
 
 	// ------------------------------------------------
-	// COLLECT RESULTS (stdout handled in main.go)
+	// COLLECT RESULTS
 	// ------------------------------------------------
 	var found []string
 	for r := range results {
 		found = append(found, r)
 	}
 
+	if wildcard && !quiet {
+		fmt.Fprintln(os.Stderr, "[!] Wildcard DNS detected — results may include false positives")
+	}
+
 	return found, stats
+}
+
+func hasWildcard(domain string) bool {
+	for i := 0; i < 3; i++ {
+		test := fmt.Sprintf("random-%d.%s", rand.Int(), domain)
+		if dnsresolver.ResolveDoH(test) {
+			return true
+		}
+	}
+	return false
 }
