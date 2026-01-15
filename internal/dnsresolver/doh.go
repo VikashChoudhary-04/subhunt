@@ -10,14 +10,33 @@ type dohResponse struct {
 	Status int `json:"Status"`
 }
 
+// List of DoH endpoints (failover order)
+var dohEndpoints = []string{
+	"https://cloudflare-dns.com/dns-query",
+	"https://dns.google/resolve",
+	"https://dns.quad9.net/dns-query",
+}
+
+// ResolveDoH tries all configured DoH providers and
+// returns true as soon as one confirms the domain exists.
 func ResolveDoH(domain string) bool {
 	client := &http.Client{
 		Timeout: 5 * time.Second,
 	}
 
+	for _, endpoint := range dohEndpoints {
+		if resolveWithEndpoint(client, endpoint, domain) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func resolveWithEndpoint(client *http.Client, endpoint, domain string) bool {
 	req, err := http.NewRequest(
 		"GET",
-		"https://cloudflare-dns.com/dns-query?name="+domain+"&type=A",
+		endpoint+"?name="+domain+"&type=A",
 		nil,
 	)
 	if err != nil {
