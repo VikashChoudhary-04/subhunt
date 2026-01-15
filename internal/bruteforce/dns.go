@@ -9,7 +9,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-
+	"strings"
 	"github.com/VikashChoudhary-04/subhunt/internal/dnsresolver"
 )
 
@@ -133,19 +133,28 @@ func Brute(domain, wordlist string, workers int, quiet bool) ([]string, Stats) {
 	// FEED JOBS (scanner fix applied)
 	// ------------------------------------------------
 	go func() {
-		scanner := bufio.NewScanner(file)
+		reader := bufio.NewReader(file)
 
-		buf := make([]byte, 0, 1024*1024)
-		scanner.Buffer(buf, 1024*1024)
+		for {
+			line, err := reader.ReadString('\n')
 
-		for scanner.Scan() {
-			jobs <- scanner.Text() + "." + domain
+		// Handle last line without newline
+		if err != nil && len(line) == 0 {
+			break
 		}
-		close(jobs)
 
-		if err := scanner.Err(); err != nil {
-			fmt.Fprintf(os.Stderr, "[!] Wordlist read error: %v\n", err)
+		line = strings.TrimSpace(line)
+		if line != "" {
+			jobs <- line + "." + domain
 		}
+
+		if err != nil {
+			break
+		}
+	}
+
+	close(jobs)
+
 	}()
 
 	// ------------------------------------------------
