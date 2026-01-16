@@ -92,6 +92,16 @@ go run ./cmd/subhunt \
   --quiet
 ```
 
+### Saving Results to a File
+
+```bash
+go run ./cmd/subhunt \
+  -d example.com \
+  --bruteforce wordlist.txt \
+  --quiet \
+  > results.txt
+```
+
 ### JSON Output Mode (Automation)
 
 ```bash
