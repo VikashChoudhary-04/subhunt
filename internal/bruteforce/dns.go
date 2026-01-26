@@ -9,7 +9,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-	"strings"
+
 	"github.com/VikashChoudhary-04/subhunt/internal/dnsresolver"
 )
 
@@ -19,6 +19,16 @@ var dnsCache = struct {
 }{
 	data: make(map[string]bool),
 }
+
+// ANSI colors (stderr UI only)
+const (
+	cReset  = "\033[0m"
+	cBold   = "\033[1m"
+	cCyan   = "\033[36m"
+	cGreen  = "\033[32m"
+	cYellow = "\033[33m"
+	cGray   = "\033[90m"
+)
 
 type Stats struct {
 	Tested uint64
@@ -73,12 +83,15 @@ func Brute(domain, wordlist string, workers int, quiet bool) ([]string, Stats) {
 					lastTime = now
 
 					os.Stderr.WriteString(
-						"\r\033[K[RUNNING] Tested: " +
-							strconv.FormatUint(current, 10) +
-							" | Found: " +
-							strconv.FormatUint(atomic.LoadUint64(&stats.Found), 10) +
-							" | Rate: " +
-							strconv.FormatUint(rate, 10) + "/s",
+						"\r\033[K" +
+							cCyan + cBold + "[RUNNING]" + cReset +
+							cGray + " Tested: " + cReset +
+							cGreen + strconv.FormatUint(current, 10) + cReset +
+							cGray + " | Found: " + cReset +
+							cYellow + strconv.FormatUint(atomic.LoadUint64(&stats.Found), 10) + cReset +
+							cGray + " | Rate: " + cReset +
+							cGreen + strconv.FormatUint(rate, 10) + cReset +
+							cGray + "/s" + cReset,
 					)
 
 				case <-done:
@@ -133,28 +146,23 @@ func Brute(domain, wordlist string, workers int, quiet bool) ([]string, Stats) {
 	// FEED JOBS (scanner fix applied)
 	// ------------------------------------------------
 	go func() {
-		reader := bufio.NewReader(file)
+		scanner := bufio.NewScanner(file)
 
-		for {
-			line, err := reader.ReadString('\n')
+		buf := make([]byte, 0, 1024*1024)
+		scanner.Buffer(buf, 1024*1024)
 
-		// Handle last line without newline
-		if err != nil && len(line) == 0 {
-			break
+		for scanner.Scan() {
+			word := scanner.Text()
+			if word == "" {
+				continue
+			}
+			jobs <- word + "." + domain
 		}
+		close(jobs)
 
-		line = strings.TrimSpace(line)
-		if line != "" {
-			jobs <- line + "." + domain
+		if err := scanner.Err(); err != nil {
+			fmt.Fprintf(os.Stderr, "[!] Wordlist read error: %v\n", err)
 		}
-
-		if err != nil {
-			break
-		}
-	}
-
-	close(jobs)
-
 	}()
 
 	// ------------------------------------------------
