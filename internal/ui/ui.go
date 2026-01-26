@@ -34,9 +34,9 @@ func Duration() string {
 
 func Banner() {
 	fmt.Fprintln(os.Stderr, cyan+"┌─────────────────────────────────────────────┐"+reset)
-	fmt.Fprintln(os.Stderr, cyan+"│ "+bold+"Subhunt v1.1.0"+reset+cyan+"                               │"+reset)
-	fmt.Fprintln(os.Stderr, cyan+"│ "+gray+"Active Subdomain Enumeration (DoH)"+reset+cyan+"           │"+reset)
-	fmt.Fprintln(os.Stderr, cyan+"│ "+gray+"Author: Vikash Choudhary"+reset+cyan+"                     │"+reset)
+	fmt.Fprintln(os.Stderr, cyan+"│ "+bold+"Subhunt v1.1.0"+reset+cyan+"                              │"+reset)
+	fmt.Fprintln(os.Stderr, cyan+"│ "+gray+"Active Subdomain Enumeration (DoH)"+reset+cyan+"          │"+reset)
+	fmt.Fprintln(os.Stderr, cyan+"│ "+gray+"Author: Vikash Choudhary"+reset+cyan+"                    │"+reset)
 	fmt.Fprintln(os.Stderr, cyan+"└─────────────────────────────────────────────┘"+reset)
 }
 
